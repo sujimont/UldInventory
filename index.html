@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>ULD Scanner - Live Sync</title>
+    <style>
+        :root { --bg-color: #f4f4f9; --btn-bg: #ffffff; --btn-active: #e0e0e0; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --dark: #343a40; --text-main: #333; }
+        body { font-family: Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; display: flex; justify-content: center; touch-action: manipulation; }
+        #app-container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
+        .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; }
+        .nav-bar button { flex: 1; padding: 10px 5px; font-size: 12px; font-weight: bold; background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; color: var(--dark); }
+        .nav-bar button.active { background: var(--dark); color: white; border-color: var(--dark); }
+        .view-section { display: none; flex-grow: 1; }
+        .view-section.active { display: block; }
+        .header-btns { display: flex; gap: 10px; margin-bottom: 10px; }
+        .header-btns button { flex: 1; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 5px; color: white; }
+        #btn-new { background-color: var(--danger); }
+        #btn-append { background-color: var(--primary); }
+        .location-group { margin-bottom: 10px; }
+        .location-group label { font-size: 12px; font-weight: bold; color: #666; display: block; margin-bottom: 5px;}
+        .location-buttons { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .location-buttons::-webkit-scrollbar { display: none; }
+        .location-buttons button { padding: 10px 15px; font-size: 14px; font-weight: bold; border: 1px solid #ccc; border-radius: 20px; background: #f8f9fa; color: var(--text-main); white-space: nowrap; }
+        .location-buttons button.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .status-bar { display: flex; justify-content: space-between; background: #eee; padding: 8px; border-radius: 5px; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+        .recent-scans-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; min-height: 24px; }
+        .recent-scans { font-size: 13px; color: #666; margin: 0; }
+        .btn-undo { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: bold; }
+        .input-display { font-size: 40px; text-align: center; letter-spacing: 10px; padding: 10px; background: #f9f9f9; border: 2px solid #ccc; border-radius: 8px; margin-bottom: 15px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .keypad button { padding: 18px; font-size: 22px; font-weight: bold; border: 1px solid #ddd; border-radius: 8px; background-color: var(--btn-bg); box-shadow: 0 2px 2px rgba(0,0,0,0.05); }
+        .keypad button:active { background-color: var(--btn-active); }
+        #btn-update { width: 100%; padding: 20px; font-size: 22px; font-weight: bold; background-color: var(--success); color: white; border: none; border-radius: 8px; }
+        .list-container { max-height: 60vh; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; }
+        .btn-del-list { background: var(--danger); color: white; border: none; border-radius: 3px; padding: 6px 10px; font-weight: bold; }
+        .export-btn { width: 100%; padding: 12px; font-size: 16px; background-color: var(--success); color: white; border: none; border-radius: 5px; font-weight: bold;}
+        .setup-section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .setup-input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .setup-input-group input[type="text"] { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        .setup-input-group button { padding: 10px; background: var(--success); color: white; border: none; border-radius: 5px; font-weight: bold;}
+        .loc-list-item { display: flex; justify-content: space-between; padding: 10px; background: #f8f9fa; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; align-items: center;}
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 3px; font-size: 12px;}
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 15px 10px; border-radius: 5px; border: 1px solid #eee;}
+        .toggle-row label { font-weight: bold; font-size: 14px; }
+        .toggle-row input[type="checkbox"] { transform: scale(1.5); }
+        .sync-status { text-align: center; font-size: 11px; color: var(--success); font-weight: bold; margin-top: 5px; }
+        .sync-status.offline { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="nav-bar">
+        <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
+        <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
+        <button id="nav-setup" onclick="switchView('setup')">SETUP</button>
+    </div>
+
+    <!-- SCANNER -->
+    <div id="view-scan" class="view-section active">
+        <div class="header-btns">
+            <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
+        </div>
+
+        <div class="location-group">
+            <label>Current Location:</label>
+            <div class="location-buttons" id="location-button-container"></div>
+        </div>
+
+        <div class="status-bar">
+            <span id="mode-display">Sync: LIVE</span>
+            <span>Count: <span id="count-display">0</span></span>
+        </div>
+
+        <div class="recent-scans-row">
+            <div class="recent-scans" id="recent-display">Last: None</div>
+            <button class="btn-undo" onclick="undoLastScan()">UNDO LAST</button>
+        </div>
+
+        <div class="input-display" id="current-input">_ _ _ _ _</div>
+
+        <div class="keypad">
+            <button onclick="pressKey('1')">1</button>
+            <button onclick="pressKey('2')">2</button>
+            <button onclick="pressKey('3')">3</button>
+            <button onclick="pressKey('4')">4</button>
+            <button onclick="pressKey('5')">5</button>
+            <button onclick="pressKey('6')">6</button>
+            <button onclick="pressKey('7')">7</button>
+            <button onclick="pressKey('8')">8</button>
+            <button onclick="pressKey('9')">9</button>
+            <button onclick="clearInput()" style="color: #dc3545; font-size: 16px;">CLEAR</button>
+            <button onclick="pressKey('0')">0</button>
+            <button onclick="backspace()" style="color: #d39e00; font-size: 16px;">BKSP</button>
+        </div>
+        <button id="btn-update" onclick="updateInventory()">UPDATE</button>
+        
+        <div id="sync-indicator" class="sync-status">🟢 Connecting to Database...</div>
+    </div>
+
+    <!-- VIEW LIST -->
+    <div id="view-list" class="view-section">
+        <div class="status-bar" style="margin-bottom: 15px;">
+            <span>Live Cloud Data</span>
+            <span>Total: <span id="list-total">0</span></span>
+        </div>
+        <div class="list-container">
+            <table>
+                <thead>
+                    <tr><th>ULD</th><th>Location</th><th style="width: 40px; text-align: center;">Action</th></tr>
+                </thead>
+                <tbody id="inventory-table-body"></tbody>
+            </table>
+        </div>
+        <button class="export-btn" onclick="exportToCSV()">Export Data to CSV</button>
+    </div>
+
+    <!-- SETUP -->
+    <div id="view-setup" class="view-section">
+        <div class="setup-section">
+            <h3>App Preferences</h3>
+            <div class="toggle-row">
+                <label for="audio-toggle">Read Numbers Out Loud</label>
+                <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
+            </div>
+            <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
+        </div>
+
+        <div class="setup-section" style="border:none;">
+            <h3>Master Locations</h3>
+            <div class="setup-input-group">
+                <input type="text" id="new-loc-input" placeholder="e.g. Ramp 3, WH-North">
+                <button onclick="addLocation()">ADD</button>
+            </div>
+            <div id="locations-list-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- FIREBASE SCRIPTS -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+    // ==========================================
+    // 1. YOUR FIREBASE CONFIGURATION
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAR7QRcfrpo2v8m7CevGnGNmmF6eifsM_s",
+      authDomain: "uldinventory-62ba9.firebaseapp.com",
+      databaseURL: "https://uldinventory-62ba9-default-rtdb.firebaseio.com",
+      projectId: "uldinventory-62ba9",
+      storageBucket: "uldinventory-62ba9.firebasestorage.app",
+      messagingSenderId: "11115223838",
+      appId: "1:11115223838:web:5672933415dff68edf070f",
+      measurementId: "G-7L7XH4X03B"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const inventoryRef = database.ref('scans');
+
+    // ==========================================
+    // APP CONFIGURATION & STATE
+    // ==========================================
+    const ADMIN_PASSWORD = "admin123"; 
+
+    let currentString = "";
+    let inventoryList = []; 
+    let masterLocations = JSON.parse(localStorage.getItem('uld_locations')) || ["WH-1", "WH-2", "Ramp A"];
+    let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
+    let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
+
+    // --- REAL-TIME FIREBASE LISTENER ---
+    inventoryRef.on('value', (snapshot) => {
+        inventoryList = [];
+        snapshot.forEach((childSnapshot) => {
+            inventoryList.push({
+                dbKey: childSnapshot.key, 
+                ...childSnapshot.val()
+            });
+        });
+        
+        updateScanUI();
+        if (document.getElementById('view-list').classList.contains('active')) {
+            renderListView();
+        }
+    });
+
+    // --- CONNECTION STATUS MONITOR ---
+    firebase.database().ref('.info/connected').on('value', function(snap) {
+        let indicator = document.getElementById('sync-indicator');
+        if (snap.val() === true) {
+            indicator.innerText = "🟢 Connected to Cloud";
+            indicator.className = "sync-status";
+        } else {
+            indicator.innerText = "🔴 Offline (Will sync when reconnected)";
+            indicator.className = "sync-status offline";
+        }
+    });
+
+    // Initialize UI
+    document.getElementById('audio-toggle').checked = audioEnabled;
+    refreshLocations();
+
+    function toggleAudio() {
+        audioEnabled = document.getElementById('audio-toggle').checked;
+        localStorage.setItem('uld_audio_enabled', JSON.stringify(audioEnabled));
+        if(audioEnabled) playVoice("Audio Enabled");
+    }
+
+    function playVoice(text) {
+        if (!audioEnabled) return;
+        window.speechSynthesis.cancel();
+        let utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.5; 
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function switchView(viewName) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-bar button').forEach(el => el.classList.remove('active'));
+        document.getElementById(`view-${viewName}`).classList.add('active');
+        document.getElementById(`nav-${viewName}`).classList.add('active');
+        if (viewName === 'list') renderListView();
+        if (viewName === 'setup') renderSetupView();
+    }
+
+    function setActiveLocation(loc) {
+        activeLocation = loc;
+        localStorage.setItem('uld_active_location', activeLocation);
+        refreshLocations(); 
+    }
+
+    function refreshLocations() {
+        let container = document.getElementById('location-button-container');
+        container.innerHTML = "";
+        if (!masterLocations.includes(activeLocation) && masterLocations.length > 0) {
+            activeLocation = masterLocations[0];
+            localStorage.setItem('uld_active_location', activeLocation);
+        }
+        masterLocations.forEach(loc => {
+            let btn = document.createElement('button');
+            btn.innerText = loc;
+            if (loc === activeLocation) btn.classList.add('active');
+            btn.onclick = () => setActiveLocation(loc);
+            container.appendChild(btn);
+        });
+    }
+
+    function pressKey(num) {
+        if (currentString.length < 5) {
+            currentString += num;
+            renderInput();
+            playVoice(num); 
+        }
+    }
+
+    function clearInput() { currentString = ""; renderInput(); playVoice("Cleared"); }
+    function backspace() { currentString = currentString.slice(0, -1); renderInput(); }
+    function renderInput() { document.getElementById('current-input').innerText = currentString.padEnd(5, '_').split('').join(' '); }
+
+    function updateInventory() {
+        if (currentString.length !== 5) { alert("Please enter a valid 5-digit ULD."); return; }
+        
+        // PUSH DATA TO FIREBASE
+        inventoryRef.push({
+            uld: currentString,
+            location: activeLocation || "Unknown",
+            timestamp: new Date().toLocaleString()
+        });
+
+        if (navigator.vibrate) navigator.vibrate(100);
+        playVoice("Updated"); 
+        
+        currentString = "";
+        renderInput();
+    }
+
+    function undoLastScan() {
+        if (inventoryList.length === 0) return;
+        let lastItem = inventoryList[inventoryList.length - 1];
+        if (confirm(`Are you sure you want to undo the last scan: ${lastItem.uld}?`)) {
+            // DELETE FROM FIREBASE
+            inventoryRef.child(lastItem.dbKey).remove();
+            playVoice("Deleted");
+        }
+    }
+
+    function updateScanUI() {
+        document.getElementById('count-display').innerText = inventoryList.length;
+        let recent = inventoryList.slice(-3).map(item => item.uld).reverse();
+        document.getElementById('recent-display').innerText = recent.length > 0 ? "Last: " + recent.join(', ') : "Last: None";
+    }
+
+    function startNewInventory() {
+        if (checkAdminAuth()) {
+            if (confirm("DANGER: This will delete the entire master inventory list from the cloud for everyone. Are you sure?")) {
+                // DELETE ALL FIREBASE DATA
+                inventoryRef.remove();
+                currentString = "";
+                renderInput();
+                playVoice("Cloud Inventory Cleared");
+            }
+        }
+    }
+
+    function renderListView() {
+        let tbody = document.getElementById('inventory-table-body');
+        tbody.innerHTML = "";
+        document.getElementById('list-total').innerText = inventoryList.length;
+        
+        let sortedList = [...inventoryList].sort((a, b) => a.uld.localeCompare(b.uld));
+        
+        sortedList.forEach(item => {
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td><strong>${item.uld}</strong></td><td>${item.location}</td><td style="text-align: center;"><button class="btn-del-list" onclick="deleteFromList('${item.dbKey}', '${item.uld}')">X</button></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function deleteFromList(dbKey, uldNumber) {
+        if (confirm(`Are you sure you want to delete ULD ${uldNumber}?`)) {
+            inventoryRef.child(dbKey).remove();
+            playVoice("Deleted");
+        }
+    }
+
+    function renderSetupView() {
+        let container = document.getElementById('locations-list-container');
+        container.innerHTML = "";
+        masterLocations.forEach((loc, index) => {
+            let div = document.createElement('div');
+            div.className = "loc-list-item";
+            div.innerHTML = `<span>${loc}</span><button class="btn-delete" onclick="deleteLocation(${index})">Delete</button>`;
+            container.appendChild(div);
+        });
+    }
+
+    function checkAdminAuth() {
+        let enteredPass = prompt("Enter Admin Password:");
+        if (enteredPass === ADMIN_PASSWORD) return true;
+        alert("Incorrect Password. Action Denied.");
+        return false;
+    }
+
+    function addLocation() {
+        let input = document.getElementById('new-loc-input');
+        let val = input.value.trim();
+        if (!val || masterLocations.includes(val)) return;
+
+        if (checkAdminAuth()) {
+            masterLocations.push(val);
+            localStorage.setItem('uld_locations', JSON.stringify(masterLocations));
+            input.value = "";
+            refreshLocations();
+            renderSetupView();
+        }
+    }
+
+    function deleteLocation(index) {
+        if (checkAdminAuth()) {
+            masterLocations.splice(index, 1);
+            localStorage.setItem('uld_locations', JSON.stringify(masterLocations));
+            refreshLocations();
+            renderSetupView();
+        }
+    }
+
+    function exportToCSV() {
+        if (inventoryList.length === 0) { alert("No data to export."); return; }
+        let csvContent = "\uFEFFULD_Number,Location,Timestamp\n";
+        inventoryList.forEach(item => { 
+            let safeLocation = `"${item.location}"`;
+            csvContent += `${item.uld},${safeLocation},${item.timestamp}\n`; 
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventory_${new Date().getTime()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.target.tagName === 'INPUT') return;
+        if (!document.getElementById('view-scan').classList.contains('active')) return;
+        const key = event.key;
+        if (key >= '0' && key <= '9') { pressKey(key); } 
+        else if (key === 'Backspace') { backspace(); } 
+        else if (key === 'Enter') { event.preventDefault(); updateInventory(); } 
+        else if (key === 'Escape' || key === 'Delete') { clearInput(); }
+    });
+    
+    renderSetupView();
+</script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+        });
+    }
+</script>
+</body>
+</html>
