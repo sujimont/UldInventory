@@ -1,6 +1,6 @@
 {
-  "name": "ULD Inventory Scanner",
-  "short_name": "ULD Scanner",
+  "name": "ULD Inventory",
+  "short_name": "ULD Inventory",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f4f9",
