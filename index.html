@@ -13,6 +13,10 @@
         :root { --bg-color: #f4f4f9; --btn-bg: #ffffff; --btn-active: #e0e0e0; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --info: #17a2b8; --dark: #343a40; --text-main: #333; }
         body { font-family: Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; display: flex; justify-content: center; touch-action: manipulation; }
         #app-container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
+        
+        /* NEW INSTALL BUTTON */
+        #install-banner { display: none; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; font-size: 14px; margin-bottom: 15px; cursor: pointer; text-align: center; }
+        
         .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;}
         .nav-bar button { flex: 1; padding: 10px 2px; font-size: 11px; font-weight: bold; background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; color: var(--dark); min-width: 70px;}
         .nav-bar button.active { background: var(--dark); color: white; border-color: var(--dark); }
@@ -53,8 +57,6 @@
         .toggle-row input[type="checkbox"] { transform: scale(1.5); }
         .sync-status { text-align: center; font-size: 11px; color: var(--success); font-weight: bold; margin-top: 5px; }
         .sync-status.offline { color: var(--danger); }
-        
-        /* Archive specific styles */
         .archive-item { border: 1px solid #ccc; padding: 12px; margin-bottom: 10px; border-radius: 6px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
         .archive-info { font-size: 12px; color: #444; line-height: 1.4;}
         .btn-restore { background: var(--info); color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 12px; cursor: pointer; }
@@ -63,6 +65,10 @@
 <body>
 
 <div id="app-container">
+    
+    <!-- INSTALL APP BANNER -->
+    <div id="install-banner" onclick="installApp()">📲 CLICK HERE TO INSTALL APP</div>
+
     <div class="nav-bar">
         <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
         <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
@@ -73,7 +79,7 @@
     <!-- SCANNER -->
     <div id="view-scan" class="view-section active">
         <div class="header-btns">
-            <button id="btn-new" onclick="startNewInventory()">CLEAR INVENTORY DATA</button>
+            <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
         </div>
 
         <div class="location-group">
@@ -133,15 +139,11 @@
     <div id="view-archive" class="view-section">
         <h3 style="margin-top:0; color:var(--dark);">Deleted Versions</h3>
         <p style="font-size:12px; color:#666; margin-top:-10px;">Restoring a version will safely backup your current active list here first.</p>
-        <div class="list-container" id="archive-list-container" style="padding: 10px; background: #fff;">
-            <!-- Archives populate here -->
-        </div>
+        <div class="list-container" id="archive-list-container" style="padding: 10px; background: #fff;"></div>
     </div>
 
     <!-- SETUP -->
     <div id="view-setup" class="view-section">
-        
-        <!-- NEW: Data Management Section -->
         <div class="setup-section">
             <h3>Data Management</h3>
             <div class="setup-input-group" style="align-items: center;">
@@ -149,7 +151,6 @@
                 <input type="number" id="archive-days-input" style="flex: 1; padding: 8px; width: 60px; text-align: center;" min="1">
                 <button onclick="saveRetentionDays()">SAVE</button>
             </div>
-            <p style="font-size: 11px; color: #666; margin-top: 5px;">Archived versions older than this will be automatically permanently deleted to save cloud storage space.</p>
         </div>
 
         <div class="setup-section">
@@ -158,7 +159,6 @@
                 <label for="audio-toggle">Read Numbers Out Loud</label>
                 <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
             </div>
-            <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
         </div>
 
         <div class="setup-section" style="border:none;">
@@ -172,7 +172,7 @@
         
         <div style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 15px;">
             <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Scanner Assigned To:<br><strong id="current-user-display" style="font-size: 16px; color: var(--primary);">Loading...</strong></p>
-            <button class="export-btn" style="background-color: var(--dark); padding: 10px; font-size: 14px;" onclick="changeUser()">CHANGE USER</button>
+            <button class="export-btn" style="background-color: var(--dark); padding: 10px; font-size: 14px;" onclick="changeUser()">CHANGE NAME</button>
         </div>
     </div>
 </div>
@@ -183,7 +183,30 @@
 
 <script>
     // ==========================================
-    // 1. YOUR FIREBASE CONFIGURATION
+    // APP INSTALLATION LOGIC
+    // ==========================================
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        // Update UI to notify the user they can add to home screen
+        document.getElementById('install-banner').style.display = 'block';
+    });
+
+    function installApp() {
+        document.getElementById('install-banner').style.display = 'none';
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        }
+    }
+
+    // ==========================================
+    // FIREBASE CONFIGURATION
     // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyAR7QRcfrpo2v8m7CevGnGNmmF6eifsM_s",
@@ -196,32 +219,23 @@
       measurementId: "G-7L7XH4X03B"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const inventoryRef = database.ref('scans');
     const archivesRef = database.ref('archives'); 
-
-    // ==========================================
-    // APP CONFIGURATION & STATE
-    // ==========================================
     const ADMIN_PASSWORD = "admin123"; 
 
-    let currentString = "";
-    let inventoryList = []; 
-    let archivesList = []; 
-    let masterLocations = JSON.parse(localStorage.getItem('uld_locations')) || ["WH-1", "WH-2", "Ramp A"];
-    let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
-    let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
+    // ==========================================
+    // USER IDENTIFICATION SYSTEM (Forces prompt on App Open)
+    // ==========================================
+    // Remove the old permanent memory so it doesn't get stuck
+    localStorage.removeItem('uld_username'); 
     
-    // Default to 30 days if not set
-    let archiveRetentionDays = parseInt(localStorage.getItem('uld_archive_days')) || 30; 
-    
-    // --- USER IDENTIFICATION SYSTEM ---
-    let currentUserName = localStorage.getItem('uld_username');
+    // Use sessionStorage so it asks every time the app is launched completely fresh
+    let currentUserName = sessionStorage.getItem('uld_username');
     if (!currentUserName) {
         currentUserName = prompt("Welcome to ULD Inventory!\n\nPlease enter your Name or Staff ID:") || "Unknown Worker";
-        localStorage.setItem('uld_username', currentUserName);
+        sessionStorage.setItem('uld_username', currentUserName);
     }
     
     // Set UI on load
@@ -234,11 +248,22 @@
         let newName = prompt("Enter new Name or Staff ID:", currentUserName);
         if (newName && newName.trim() !== "") {
             currentUserName = newName.trim();
-            localStorage.setItem('uld_username', currentUserName);
+            sessionStorage.setItem('uld_username', currentUserName);
             document.getElementById('current-user-display').innerText = currentUserName;
             alert(`Scanner is now assigned to: ${currentUserName}`);
         }
     }
+
+    // ==========================================
+    // REST OF APP CONFIGURATION
+    // ==========================================
+    let currentString = "";
+    let inventoryList = []; 
+    let archivesList = []; 
+    let masterLocations = JSON.parse(localStorage.getItem('uld_locations')) || ["WH-1", "WH-2", "Ramp A"];
+    let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
+    let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
+    let archiveRetentionDays = parseInt(localStorage.getItem('uld_archive_days')) || 90; 
     
     function saveRetentionDays() {
         if (!checkAdminAuth()) return;
@@ -246,68 +271,44 @@
         if (val > 0) {
             archiveRetentionDays = val;
             localStorage.setItem('uld_archive_days', val);
-            alert(`Archive retention updated to ${val} days. Old records will be cleared automatically.`);
-            cleanUpArchives(); // Trigger cleanup immediately upon save
-        } else {
-            alert("Please enter a valid number of days greater than 0.");
+            alert(`Archive retention updated to ${val} days.`);
+            cleanUpArchives(); 
         }
     }
 
-    // --- AUTO-CLEANUP LOGIC ---
     function cleanUpArchives() {
         let now = new Date().getTime();
-        // Convert days to milliseconds
         let cutoffTime = now - (archiveRetentionDays * 24 * 60 * 60 * 1000);
-
         archivesRef.once('value', (snapshot) => {
             let updates = {};
-            let hasDeletions = false;
-            
             snapshot.forEach((child) => {
-                let archive = child.val();
-                // Check new timestampMs, or fallback to parsing the text string for old records
-                let archiveTime = archive.timestampMs || Date.parse(archive.timestamp);
-                
-                if (archiveTime && archiveTime < cutoffTime) {
-                    updates[child.key] = null; // Setting to null deletes it in Firebase
-                    hasDeletions = true;
-                }
+                let archiveTime = child.val().timestampMs || Date.parse(child.val().timestamp);
+                if (archiveTime && archiveTime < cutoffTime) updates[child.key] = null; 
             });
-            
-            if (hasDeletions) {
-                archivesRef.update(updates);
-                console.log("Pruned old archives based on retention settings.");
-            }
+            if (Object.keys(updates).length > 0) archivesRef.update(updates);
         });
     }
 
-    // --- REAL-TIME FIREBASE LISTENER (ACTIVE INVENTORY) ---
     inventoryRef.on('value', (snapshot) => {
         inventoryList = [];
         snapshot.forEach((childSnapshot) => {
             inventoryList.push({ dbKey: childSnapshot.key, ...childSnapshot.val() });
         });
-        
         updateScanUI();
         if (document.getElementById('view-list').classList.contains('active')) renderListView();
     });
 
-    // --- REAL-TIME FIREBASE LISTENER (ARCHIVES) ---
     archivesRef.on('value', (snapshot) => {
         archivesList = [];
-        snapshot.forEach((child) => {
-            archivesList.push({ dbKey: child.key, ...child.val() });
-        });
+        snapshot.forEach((child) => { archivesList.push({ dbKey: child.key, ...child.val() }); });
         if (document.getElementById('view-archive').classList.contains('active')) renderArchiveView();
     });
 
-    // --- CONNECTION STATUS MONITOR & STARTUP CLEANUP ---
     firebase.database().ref('.info/connected').on('value', function(snap) {
         let indicator = document.getElementById('sync-indicator');
         if (snap.val() === true) {
             indicator.innerText = "🟢 Connected to Cloud";
             indicator.className = "sync-status";
-            // Run cleanup once we know we have a cloud connection
             cleanUpArchives();
         } else {
             indicator.innerText = "🔴 Offline (Will sync when reconnected)";
@@ -315,7 +316,6 @@
         }
     });
 
-    // Initialize UI
     document.getElementById('audio-toggle').checked = audioEnabled;
     refreshLocations();
 
@@ -383,13 +383,12 @@
         inventoryRef.push({
             uld: currentString,
             location: activeLocation || "Unknown",
-            user: currentUserName, 
+            user: currentUserName, // Pulled fresh from Session
             timestamp: new Date().toLocaleString()
         });
 
         if (navigator.vibrate) navigator.vibrate(100);
         playVoice("Updated"); 
-        
         currentString = "";
         renderInput();
     }
@@ -397,7 +396,7 @@
     function undoLastScan() {
         if (inventoryList.length === 0) return;
         let lastItem = inventoryList[inventoryList.length - 1];
-        if (confirm(`Are you sure you want to undo the last scan: ${lastItem.uld}?`)) {
+        if (confirm(`Undo last scan: ${lastItem.uld}?`)) {
             inventoryRef.child(lastItem.dbKey).remove();
             playVoice("Deleted");
         }
@@ -409,23 +408,20 @@
         document.getElementById('recent-display').innerText = recent.length > 0 ? "Last: " + recent.join(', ') : "Last: None";
     }
 
-    // ==========================================
-    // VERSION CONTROL & BACKUP LOGIC
-    // ==========================================
-
     function startNewInventory() {
         if (!checkAdminAuth()) return;
+        
+        let adminName = prompt("Audit Log: Enter your Admin Name or Staff ID:");
+        if (!adminName || adminName.trim() === "") adminName = "Unknown Admin";
 
         if (confirm("DANGER: This will clear the active cloud inventory. Are you sure?")) {
-            
             inventoryRef.once('value', (snapshot) => {
                 let currentData = snapshot.val();
-                
                 if (currentData) {
                     archivesRef.push({
                         timestamp: new Date().toLocaleString(),
-                        timestampMs: new Date().getTime(), // Precise time for auto-cleanup math
-                        user: currentUserName, 
+                        timestampMs: new Date().getTime(), 
+                        user: adminName,
                         action: "Manual Clear",
                         data: currentData
                     }, (error) => {
@@ -433,8 +429,8 @@
                             inventoryRef.remove();
                             currentString = "";
                             renderInput();
-                            playVoice("Inventory Archived and Cleared");
-                            alert("Success! The old inventory was saved to the Archives tab.");
+                            playVoice("Cleared");
+                            alert("Success! Inventory saved to Archives.");
                         }
                     });
                 } else {
@@ -449,7 +445,7 @@
         container.innerHTML = "";
         
         if (archivesList.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:#666; font-size:14px;'>No archived versions found.</p>";
+            container.innerHTML = "<p style='text-align:center; color:#666;'>No archived versions found.</p>";
             return;
         }
 
@@ -465,7 +461,7 @@
             div.className = "archive-item";
             div.innerHTML = `
                 <div class="archive-info">
-                    <strong style="font-size: 14px;">${archive.timestamp}</strong><br>
+                    <strong>${archive.timestamp}</strong><br>
                     <span style="color:var(--primary);">By: ${archive.user}</span><br>
                     Total ULDs: <strong>${uldCount}</strong><br>
                     <em style="font-size:10px; color:#888;">Note: ${archive.action}</em>
@@ -478,22 +474,19 @@
 
     function restoreArchive(archiveKey) {
         if (!checkAdminAuth()) return;
-
         let archiveToRestore = archivesList.find(a => a.dbKey === archiveKey);
         if (!archiveToRestore || !archiveToRestore.data) return;
 
-        if (!confirm(`Are you sure you want to restore the inventory from ${archiveToRestore.timestamp}?\n\nIf your CURRENT inventory has data, it will be automatically archived first to prevent loss.`)) return;
+        if (!confirm(`Restore the inventory from ${archiveToRestore.timestamp}?`)) return;
+
+        let adminName = prompt("Audit Log: Enter your Admin Name:");
+        if (!adminName || adminName.trim() === "") adminName = "Unknown Admin";
 
         inventoryRef.once('value', (snapshot) => {
             let currentData = snapshot.val();
-            
             let doRestore = () => {
                 inventoryRef.set(archiveToRestore.data, (error) => {
-                    if (!error) {
-                        alert("Data successfully restored!");
-                        switchView('list');
-                        playVoice("Data Restored");
-                    }
+                    if (!error) { alert("Data restored!"); switchView('list'); playVoice("Restored"); }
                 });
             };
 
@@ -501,27 +494,21 @@
                 archivesRef.push({
                     timestamp: new Date().toLocaleString(),
                     timestampMs: new Date().getTime(),
-                    user: currentUserName, 
+                    user: adminName,
                     action: "Auto-Archived before Restoration",
                     data: currentData
-                }, (error) => {
-                    if (!error) doRestore(); 
-                });
+                }, (error) => { if (!error) doRestore(); });
             } else {
                 doRestore();
             }
         });
     }
 
-    // ==========================================
-
     function renderListView() {
         let tbody = document.getElementById('inventory-table-body');
         tbody.innerHTML = "";
         document.getElementById('list-total').innerText = inventoryList.length;
-        
         let sortedList = [...inventoryList].sort((a, b) => a.uld.localeCompare(b.uld));
-        
         sortedList.forEach(item => {
             let tr = document.createElement('tr');
             tr.innerHTML = `<td><strong>${item.uld}</strong></td><td>${item.location}</td><td style="text-align: center;"><button class="btn-del-list" onclick="deleteFromList('${item.dbKey}', '${item.uld}')">X</button></td>`;
@@ -530,10 +517,7 @@
     }
 
     function deleteFromList(dbKey, uldNumber) {
-        if (confirm(`Are you sure you want to delete ULD ${uldNumber}?`)) {
-            inventoryRef.child(dbKey).remove();
-            playVoice("Deleted");
-        }
+        if (confirm(`Delete ULD ${uldNumber}?`)) { inventoryRef.child(dbKey).remove(); playVoice("Deleted"); }
     }
 
     function renderSetupView() {
@@ -550,7 +534,7 @@
     function checkAdminAuth() {
         let enteredPass = prompt("Enter Admin Password:");
         if (enteredPass === ADMIN_PASSWORD) return true;
-        if (enteredPass !== null) alert("Incorrect Password. Action Denied.");
+        if (enteredPass !== null) alert("Incorrect Password.");
         return false;
     }
 
@@ -558,7 +542,6 @@
         let input = document.getElementById('new-loc-input');
         let val = input.value.trim();
         if (!val || masterLocations.includes(val)) return;
-
         if (checkAdminAuth()) {
             masterLocations.push(val);
             localStorage.setItem('uld_locations', JSON.stringify(masterLocations));
