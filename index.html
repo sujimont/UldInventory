@@ -44,7 +44,7 @@
         .export-btn { width: 100%; padding: 12px; font-size: 16px; background-color: var(--success); color: white; border: none; border-radius: 5px; font-weight: bold;}
         .setup-section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .setup-input-group { display: flex; gap: 5px; margin-bottom: 10px; }
-        .setup-input-group input[type="text"] { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        .setup-input-group input[type="text"], .setup-input-group input[type="number"] { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
         .setup-input-group button { padding: 10px; background: var(--success); color: white; border: none; border-radius: 5px; font-weight: bold;}
         .loc-list-item { display: flex; justify-content: space-between; padding: 10px; background: #f8f9fa; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; align-items: center;}
         .btn-delete { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 3px; font-size: 12px;}
@@ -140,6 +140,18 @@
 
     <!-- SETUP -->
     <div id="view-setup" class="view-section">
+        
+        <!-- NEW: Data Management Section -->
+        <div class="setup-section">
+            <h3>Data Management</h3>
+            <div class="setup-input-group" style="align-items: center;">
+                <label style="flex: 2; font-size: 14px; font-weight: bold; color: var(--dark);">Archive Retention (Days):</label>
+                <input type="number" id="archive-days-input" style="flex: 1; padding: 8px; width: 60px; text-align: center;" min="1">
+                <button onclick="saveRetentionDays()">SAVE</button>
+            </div>
+            <p style="font-size: 11px; color: #666; margin-top: 5px;">Archived versions older than this will be automatically permanently deleted to save cloud storage space.</p>
+        </div>
+
         <div class="setup-section">
             <h3>App Preferences</h3>
             <div class="toggle-row">
@@ -202,6 +214,9 @@
     let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
     let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
     
+    // Default to 30 days if not set
+    let archiveRetentionDays = parseInt(localStorage.getItem('uld_archive_days')) || 30; 
+    
     // --- USER IDENTIFICATION SYSTEM ---
     let currentUserName = localStorage.getItem('uld_username');
     if (!currentUserName) {
@@ -212,6 +227,7 @@
     // Set UI on load
     document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('current-user-display').innerText = currentUserName;
+        document.getElementById('archive-days-input').value = archiveRetentionDays;
     });
 
     function changeUser() {
@@ -222,6 +238,47 @@
             document.getElementById('current-user-display').innerText = currentUserName;
             alert(`Scanner is now assigned to: ${currentUserName}`);
         }
+    }
+    
+    function saveRetentionDays() {
+        if (!checkAdminAuth()) return;
+        let val = parseInt(document.getElementById('archive-days-input').value);
+        if (val > 0) {
+            archiveRetentionDays = val;
+            localStorage.setItem('uld_archive_days', val);
+            alert(`Archive retention updated to ${val} days. Old records will be cleared automatically.`);
+            cleanUpArchives(); // Trigger cleanup immediately upon save
+        } else {
+            alert("Please enter a valid number of days greater than 0.");
+        }
+    }
+
+    // --- AUTO-CLEANUP LOGIC ---
+    function cleanUpArchives() {
+        let now = new Date().getTime();
+        // Convert days to milliseconds
+        let cutoffTime = now - (archiveRetentionDays * 24 * 60 * 60 * 1000);
+
+        archivesRef.once('value', (snapshot) => {
+            let updates = {};
+            let hasDeletions = false;
+            
+            snapshot.forEach((child) => {
+                let archive = child.val();
+                // Check new timestampMs, or fallback to parsing the text string for old records
+                let archiveTime = archive.timestampMs || Date.parse(archive.timestamp);
+                
+                if (archiveTime && archiveTime < cutoffTime) {
+                    updates[child.key] = null; // Setting to null deletes it in Firebase
+                    hasDeletions = true;
+                }
+            });
+            
+            if (hasDeletions) {
+                archivesRef.update(updates);
+                console.log("Pruned old archives based on retention settings.");
+            }
+        });
     }
 
     // --- REAL-TIME FIREBASE LISTENER (ACTIVE INVENTORY) ---
@@ -244,12 +301,14 @@
         if (document.getElementById('view-archive').classList.contains('active')) renderArchiveView();
     });
 
-    // --- CONNECTION STATUS MONITOR ---
+    // --- CONNECTION STATUS MONITOR & STARTUP CLEANUP ---
     firebase.database().ref('.info/connected').on('value', function(snap) {
         let indicator = document.getElementById('sync-indicator');
         if (snap.val() === true) {
             indicator.innerText = "🟢 Connected to Cloud";
             indicator.className = "sync-status";
+            // Run cleanup once we know we have a cloud connection
+            cleanUpArchives();
         } else {
             indicator.innerText = "🔴 Offline (Will sync when reconnected)";
             indicator.className = "sync-status offline";
@@ -324,7 +383,7 @@
         inventoryRef.push({
             uld: currentString,
             location: activeLocation || "Unknown",
-            user: currentUserName, // Uses local name
+            user: currentUserName, 
             timestamp: new Date().toLocaleString()
         });
 
@@ -365,7 +424,8 @@
                 if (currentData) {
                     archivesRef.push({
                         timestamp: new Date().toLocaleString(),
-                        user: currentUserName, // Uses local name
+                        timestampMs: new Date().getTime(), // Precise time for auto-cleanup math
+                        user: currentUserName, 
                         action: "Manual Clear",
                         data: currentData
                     }, (error) => {
@@ -393,7 +453,11 @@
             return;
         }
 
-        let sortedArchives = [...archivesList].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        let sortedArchives = [...archivesList].sort((a, b) => {
+            let timeA = a.timestampMs || Date.parse(a.timestamp);
+            let timeB = b.timestampMs || Date.parse(b.timestamp);
+            return timeB - timeA;
+        });
         
         sortedArchives.forEach(archive => {
             let uldCount = archive.data ? Object.keys(archive.data).length : 0;
@@ -436,7 +500,8 @@
             if (currentData) {
                 archivesRef.push({
                     timestamp: new Date().toLocaleString(),
-                    user: currentUserName, // Uses local name
+                    timestampMs: new Date().getTime(),
+                    user: currentUserName, 
                     action: "Auto-Archived before Restoration",
                     data: currentData
                 }, (error) => {
@@ -532,7 +597,7 @@
     }
 
     document.addEventListener('keydown', function(event) {
-        if (event.target.tagName === 'INPUT') return;
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'NUMBER') return;
         if (!document.getElementById('view-scan').classList.contains('active')) return;
         const key = event.key;
         if (key >= '0' && key <= '9') { pressKey(key); } 
