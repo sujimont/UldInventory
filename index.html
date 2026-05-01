@@ -14,7 +14,6 @@
         body { font-family: Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; display: flex; justify-content: center; touch-action: manipulation; }
         #app-container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
         
-        /* NEW INSTALL BUTTON */
         #install-banner { display: none; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; font-size: 14px; margin-bottom: 15px; cursor: pointer; text-align: center; }
         
         .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;}
@@ -52,7 +51,7 @@
         .setup-input-group button { padding: 10px; background: var(--success); color: white; border: none; border-radius: 5px; font-weight: bold;}
         .loc-list-item { display: flex; justify-content: space-between; padding: 10px; background: #f8f9fa; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; align-items: center;}
         .btn-delete { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 3px; font-size: 12px;}
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 15px 10px; border-radius: 5px; border: 1px solid #eee;}
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 15px 10px; border-radius: 5px; border: 1px solid #eee; margin-bottom: 8px;}
         .toggle-row label { font-weight: bold; font-size: 14px; }
         .toggle-row input[type="checkbox"] { transform: scale(1.5); }
         .sync-status { text-align: center; font-size: 11px; color: var(--success); font-weight: bold; margin-top: 5px; }
@@ -144,20 +143,28 @@
 
     <!-- SETUP -->
     <div id="view-setup" class="view-section">
+        
+        <div class="setup-section">
+            <h3>App Preferences & Device</h3>
+            
+            <div class="toggle-row">
+                <label for="shared-toggle" style="color: var(--primary);">Shared Scanner Mode<br>
+                <span style="font-size:10px; font-weight:normal; color:#666;">If ON, forces user to enter name on every open (PDAs).<br>If OFF, remembers user permanently (PCs/Personal Phones).</span></label>
+                <input type="checkbox" id="shared-toggle" onchange="toggleSharedMode()">
+            </div>
+
+            <div class="toggle-row">
+                <label for="audio-toggle">Read Numbers Out Loud</label>
+                <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
+            </div>
+        </div>
+
         <div class="setup-section">
             <h3>Data Management</h3>
             <div class="setup-input-group" style="align-items: center;">
                 <label style="flex: 2; font-size: 14px; font-weight: bold; color: var(--dark);">Archive Retention (Days):</label>
                 <input type="number" id="archive-days-input" style="flex: 1; padding: 8px; width: 60px; text-align: center;" min="1">
                 <button onclick="saveRetentionDays()">SAVE</button>
-            </div>
-        </div>
-
-        <div class="setup-section">
-            <h3>App Preferences</h3>
-            <div class="toggle-row">
-                <label for="audio-toggle">Read Numbers Out Loud</label>
-                <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
             </div>
         </div>
 
@@ -187,11 +194,8 @@
     // ==========================================
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome 67 and earlier from automatically showing the prompt
         e.preventDefault();
-        // Stash the event so it can be triggered later.
         deferredPrompt = e;
-        // Update UI to notify the user they can add to home screen
         document.getElementById('install-banner').style.display = 'block';
     });
 
@@ -226,32 +230,75 @@
     const ADMIN_PASSWORD = "admin123"; 
 
     // ==========================================
-    // USER IDENTIFICATION SYSTEM (Forces prompt on App Open)
+    // USER IDENTIFICATION SYSTEM (Shared vs Personal)
     // ==========================================
-    // Remove the old permanent memory so it doesn't get stuck
-    localStorage.removeItem('uld_username'); 
-    
-    // Use sessionStorage so it asks every time the app is launched completely fresh
-    let currentUserName = sessionStorage.getItem('uld_username');
+    let isSharedDevice = JSON.parse(localStorage.getItem('uld_shared_device')) || false;
+    let currentUserName = "";
+
+    function promptForName() {
+        let name = prompt("Welcome to ULD Inventory!\n\nPlease enter your Name or Staff ID:") || "Unknown Worker";
+        saveName(name);
+        return name;
+    }
+
+    function saveName(name) {
+        currentUserName = name;
+        if (isSharedDevice) {
+            // Save to temporary memory, wipe permanent memory just in case
+            sessionStorage.setItem('uld_username', name);
+            localStorage.removeItem('uld_username'); 
+        } else {
+            // Save to permanent memory, wipe temporary memory just in case
+            localStorage.setItem('uld_username', name);
+            sessionStorage.removeItem('uld_username'); 
+        }
+    }
+
+    // Load name based on device mode
+    if (isSharedDevice) {
+        currentUserName = sessionStorage.getItem('uld_username');
+    } else {
+        currentUserName = localStorage.getItem('uld_username');
+    }
+
+    // If no name found (first open, or first open of a shift on PDA)
     if (!currentUserName) {
-        currentUserName = prompt("Welcome to ULD Inventory!\n\nPlease enter your Name or Staff ID:") || "Unknown Worker";
-        sessionStorage.setItem('uld_username', currentUserName);
+        currentUserName = promptForName();
     }
     
     // Set UI on load
     document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('current-user-display').innerText = currentUserName;
         document.getElementById('archive-days-input').value = archiveRetentionDays;
+        document.getElementById('shared-toggle').checked = isSharedDevice;
     });
 
     function changeUser() {
         let newName = prompt("Enter new Name or Staff ID:", currentUserName);
         if (newName && newName.trim() !== "") {
-            currentUserName = newName.trim();
-            sessionStorage.setItem('uld_username', currentUserName);
+            saveName(newName.trim());
             document.getElementById('current-user-display').innerText = currentUserName;
             alert(`Scanner is now assigned to: ${currentUserName}`);
         }
+    }
+
+    function toggleSharedMode() {
+        if (!checkAdminAuth()) {
+            document.getElementById('shared-toggle').checked = !document.getElementById('shared-toggle').checked;
+            return;
+        }
+        isSharedDevice = document.getElementById('shared-toggle').checked;
+        localStorage.setItem('uld_shared_device', JSON.stringify(isSharedDevice));
+        
+        if (isSharedDevice) {
+            alert("SHARED MODE ON:\nThis device will now force workers to enter their name every time the app is opened.");
+        } else {
+            alert("SHARED MODE OFF:\nThis device will now act as a personal device and remember the user permanently.");
+        }
+        
+        // Force a re-prompt so it saves into the correct memory bank immediately
+        currentUserName = promptForName();
+        document.getElementById('current-user-display').innerText = currentUserName;
     }
 
     // ==========================================
@@ -383,7 +430,7 @@
         inventoryRef.push({
             uld: currentString,
             location: activeLocation || "Unknown",
-            user: currentUserName, // Pulled fresh from Session
+            user: currentUserName,
             timestamp: new Date().toLocaleString()
         });
 
