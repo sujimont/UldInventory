@@ -3,23 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta name="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>ULD Scanner - Live Sync</title>
+    <title>ULD Inventory</title>
     <style>
-        :root { --bg-color: #f4f4f9; --btn-bg: #ffffff; --btn-active: #e0e0e0; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --dark: #343a40; --text-main: #333; }
+        :root { --bg-color: #f4f4f9; --btn-bg: #ffffff; --btn-active: #e0e0e0; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --info: #17a2b8; --dark: #343a40; --text-main: #333; }
         body { font-family: Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; display: flex; justify-content: center; touch-action: manipulation; }
         #app-container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
-        .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; }
-        .nav-bar button { flex: 1; padding: 10px 5px; font-size: 12px; font-weight: bold; background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; color: var(--dark); }
+        
+        /* LOGIN SCREEN STYLES */
+        #login-section { display: flex; flex-direction: column; justify-content: center; height: 80vh; }
+        .login-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box;}
+        .login-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background-color: var(--primary); color: white; border: none; border-radius: 5px; margin-bottom: 10px;}
+        #login-error { color: var(--danger); font-size: 13px; text-align: center; min-height: 20px; font-weight: bold;}
+        
+        #main-app-content { display: none; flex-direction: column; flex-grow: 1; }
+        
+        .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;}
+        .nav-bar button { flex: 1; padding: 10px 2px; font-size: 11px; font-weight: bold; background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; color: var(--dark); min-width: 70px;}
         .nav-bar button.active { background: var(--dark); color: white; border-color: var(--dark); }
         .view-section { display: none; flex-grow: 1; }
         .view-section.active { display: block; }
         .header-btns { display: flex; gap: 10px; margin-bottom: 10px; }
         .header-btns button { flex: 1; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 5px; color: white; }
         #btn-new { background-color: var(--danger); }
-        #btn-append { background-color: var(--primary); }
         .location-group { margin-bottom: 10px; }
         .location-group label { font-size: 12px; font-weight: bold; color: #666; display: block; margin-bottom: 5px;}
         .location-buttons { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
@@ -52,100 +62,132 @@
         .toggle-row input[type="checkbox"] { transform: scale(1.5); }
         .sync-status { text-align: center; font-size: 11px; color: var(--success); font-weight: bold; margin-top: 5px; }
         .sync-status.offline { color: var(--danger); }
+        .archive-item { border: 1px solid #ccc; padding: 12px; margin-bottom: 10px; border-radius: 6px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
+        .archive-info { font-size: 12px; color: #444; line-height: 1.4;}
+        .btn-restore { background: var(--info); color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .logout-btn { width: 100%; padding: 12px; margin-top: 15px; font-size: 16px; background-color: var(--dark); color: white; border: none; border-radius: 5px; font-weight: bold;}
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div class="nav-bar">
-        <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
-        <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
-        <button id="nav-setup" onclick="switchView('setup')">SETUP</button>
+    
+    <!-- LOGIN SECTION -->
+    <div id="login-section">
+        <h2 style="text-align: center; color: var(--dark); margin-bottom: 30px;">ULD Inventory<br><span style="font-size: 14px; color: #666;">Authorized Access Only</span></h2>
+        <input type="email" id="auth-email" class="login-input" placeholder="Email Address">
+        <input type="password" id="auth-password" class="login-input" placeholder="Password">
+        <button class="login-btn" onclick="loginUser()">LOGIN</button>
+        <div id="login-error"></div>
     </div>
 
-    <!-- SCANNER -->
-    <div id="view-scan" class="view-section active">
-        <div class="header-btns">
-            <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
+    <!-- MAIN APP CONTENT (Hidden until logged in) -->
+    <div id="main-app-content">
+        <div class="nav-bar">
+            <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
+            <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
+            <button id="nav-archive" onclick="switchView('archive')">ARCHIVES</button>
+            <button id="nav-setup" onclick="switchView('setup')">SETUP</button>
         </div>
 
-        <div class="location-group">
-            <label>Current Location:</label>
-            <div class="location-buttons" id="location-button-container"></div>
-        </div>
-
-        <div class="status-bar">
-            <span id="mode-display">Sync: LIVE</span>
-            <span>Count: <span id="count-display">0</span></span>
-        </div>
-
-        <div class="recent-scans-row">
-            <div class="recent-scans" id="recent-display">Last: None</div>
-            <button class="btn-undo" onclick="undoLastScan()">UNDO LAST</button>
-        </div>
-
-        <div class="input-display" id="current-input">_ _ _ _ _</div>
-
-        <div class="keypad">
-            <button onclick="pressKey('1')">1</button>
-            <button onclick="pressKey('2')">2</button>
-            <button onclick="pressKey('3')">3</button>
-            <button onclick="pressKey('4')">4</button>
-            <button onclick="pressKey('5')">5</button>
-            <button onclick="pressKey('6')">6</button>
-            <button onclick="pressKey('7')">7</button>
-            <button onclick="pressKey('8')">8</button>
-            <button onclick="pressKey('9')">9</button>
-            <button onclick="clearInput()" style="color: #dc3545; font-size: 16px;">CLEAR</button>
-            <button onclick="pressKey('0')">0</button>
-            <button onclick="backspace()" style="color: #d39e00; font-size: 16px;">BKSP</button>
-        </div>
-        <button id="btn-update" onclick="updateInventory()">UPDATE</button>
-        
-        <div id="sync-indicator" class="sync-status">🟢 Connecting to Database...</div>
-    </div>
-
-    <!-- VIEW LIST -->
-    <div id="view-list" class="view-section">
-        <div class="status-bar" style="margin-bottom: 15px;">
-            <span>Live Cloud Data</span>
-            <span>Total: <span id="list-total">0</span></span>
-        </div>
-        <div class="list-container">
-            <table>
-                <thead>
-                    <tr><th>ULD</th><th>Location</th><th style="width: 40px; text-align: center;">Action</th></tr>
-                </thead>
-                <tbody id="inventory-table-body"></tbody>
-            </table>
-        </div>
-        <button class="export-btn" onclick="exportToCSV()">Export Data to CSV</button>
-    </div>
-
-    <!-- SETUP -->
-    <div id="view-setup" class="view-section">
-        <div class="setup-section">
-            <h3>App Preferences</h3>
-            <div class="toggle-row">
-                <label for="audio-toggle">Read Numbers Out Loud</label>
-                <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
+        <!-- SCANNER -->
+        <div id="view-scan" class="view-section active">
+            <div class="header-btns">
+                <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
             </div>
-            <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
+
+            <div class="location-group">
+                <label>Current Location:</label>
+                <div class="location-buttons" id="location-button-container"></div>
+            </div>
+
+            <div class="status-bar">
+                <span id="mode-display">Sync: LIVE</span>
+                <span>Count: <span id="count-display">0</span></span>
+            </div>
+
+            <div class="recent-scans-row">
+                <div class="recent-scans" id="recent-display">Last: None</div>
+                <button class="btn-undo" onclick="undoLastScan()">UNDO LAST</button>
+            </div>
+
+            <div class="input-display" id="current-input">_ _ _ _ _</div>
+
+            <div class="keypad">
+                <button onclick="pressKey('1')">1</button>
+                <button onclick="pressKey('2')">2</button>
+                <button onclick="pressKey('3')">3</button>
+                <button onclick="pressKey('4')">4</button>
+                <button onclick="pressKey('5')">5</button>
+                <button onclick="pressKey('6')">6</button>
+                <button onclick="pressKey('7')">7</button>
+                <button onclick="pressKey('8')">8</button>
+                <button onclick="pressKey('9')">9</button>
+                <button onclick="clearInput()" style="color: #dc3545; font-size: 16px;">CLEAR</button>
+                <button onclick="pressKey('0')">0</button>
+                <button onclick="backspace()" style="color: #d39e00; font-size: 16px;">BKSP</button>
+            </div>
+            <button id="btn-update" onclick="updateInventory()">UPDATE</button>
+            
+            <div id="sync-indicator" class="sync-status">🟢 Connecting to Database...</div>
         </div>
 
-        <div class="setup-section" style="border:none;">
-            <h3>Master Locations</h3>
-            <div class="setup-input-group">
-                <input type="text" id="new-loc-input" placeholder="e.g. Ramp 3, WH-North">
-                <button onclick="addLocation()">ADD</button>
+        <!-- VIEW LIST -->
+        <div id="view-list" class="view-section">
+            <div class="status-bar" style="margin-bottom: 15px;">
+                <span>Live Cloud Data</span>
+                <span>Total: <span id="list-total">0</span></span>
             </div>
-            <div id="locations-list-container"></div>
+            <div class="list-container">
+                <table>
+                    <thead>
+                        <tr><th>ULD</th><th>Location</th><th style="width: 40px; text-align: center;">Action</th></tr>
+                    </thead>
+                    <tbody id="inventory-table-body"></tbody>
+                </table>
+            </div>
+            <button class="export-btn" onclick="exportToCSV()">Export Data to CSV</button>
+        </div>
+
+        <!-- ARCHIVES -->
+        <div id="view-archive" class="view-section">
+            <h3 style="margin-top:0; color:var(--dark);">Deleted Versions</h3>
+            <p style="font-size:12px; color:#666; margin-top:-10px;">Restoring a version will safely backup your current active list here first.</p>
+            <div class="list-container" id="archive-list-container" style="padding: 10px; background: #fff;">
+            </div>
+        </div>
+
+        <!-- SETUP -->
+        <div id="view-setup" class="view-section">
+            <div class="setup-section">
+                <h3>App Preferences</h3>
+                <div class="toggle-row">
+                    <label for="audio-toggle">Read Numbers Out Loud</label>
+                    <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
+                </div>
+                <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
+            </div>
+
+            <div class="setup-section" style="border:none;">
+                <h3>Master Locations</h3>
+                <div class="setup-input-group">
+                    <input type="text" id="new-loc-input" placeholder="e.g. Ramp 3, WH-North">
+                    <button onclick="addLocation()">ADD</button>
+                </div>
+                <div id="locations-list-container"></div>
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <p style="font-size: 12px; color: #666; margin-bottom: 5px;">Logged in as: <span id="current-user-email"></span></p>
+                <button class="logout-btn" onclick="logoutUser()">LOGOUT APP</button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- FIREBASE SCRIPTS -->
+<!-- FIREBASE SCRIPTS (ADDED AUTH SDK) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
@@ -165,8 +207,60 @@
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const database = firebase.database();
-    const inventoryRef = database.ref('scans');
+    
+    // We declare these, but don't connect them until AFTER login
+    let inventoryRef;
+    let archivesRef;
+
+    // ==========================================
+    // AUTHENTICATION LOGIC
+    // ==========================================
+    
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // User is signed in.
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('main-app-content').style.display = 'flex';
+            document.getElementById('current-user-email').innerText = user.email;
+            
+            // Connect to database ONLY after verified login
+            inventoryRef = database.ref('scans');
+            archivesRef = database.ref('archives');
+            setupDatabaseListeners();
+            
+        } else {
+            // No user is signed in.
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('main-app-content').style.display = 'none';
+        }
+    });
+
+    function loginUser() {
+        const email = document.getElementById('auth-email').value;
+        const pass = document.getElementById('auth-password').value;
+        const errorDiv = document.getElementById('login-error');
+        
+        if(!email || !pass) { errorDiv.innerText = "Please enter email and password"; return; }
+        
+        errorDiv.innerText = "Logging in...";
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch((error) => {
+                errorDiv.innerText = error.message;
+            });
+    }
+
+    function logoutUser() {
+        auth.signOut().then(() => {
+            // clear data from screen
+            inventoryList = [];
+            archivesList = [];
+            document.getElementById('auth-password').value = "";
+            document.getElementById('login-error').innerText = "";
+            alert("Successfully logged out.");
+        });
+    }
 
     // ==========================================
     // APP CONFIGURATION & STATE
@@ -175,37 +269,43 @@
 
     let currentString = "";
     let inventoryList = []; 
+    let archivesList = []; 
     let masterLocations = JSON.parse(localStorage.getItem('uld_locations')) || ["WH-1", "WH-2", "Ramp A"];
     let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
     let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
 
-    // --- REAL-TIME FIREBASE LISTENER ---
-    inventoryRef.on('value', (snapshot) => {
-        inventoryList = [];
-        snapshot.forEach((childSnapshot) => {
-            inventoryList.push({
-                dbKey: childSnapshot.key, 
-                ...childSnapshot.val()
+    function setupDatabaseListeners() {
+        // --- REAL-TIME FIREBASE LISTENER (ACTIVE INVENTORY) ---
+        inventoryRef.on('value', (snapshot) => {
+            inventoryList = [];
+            snapshot.forEach((childSnapshot) => {
+                inventoryList.push({ dbKey: childSnapshot.key, ...childSnapshot.val() });
             });
+            updateScanUI();
+            if (document.getElementById('view-list').classList.contains('active')) renderListView();
         });
-        
-        updateScanUI();
-        if (document.getElementById('view-list').classList.contains('active')) {
-            renderListView();
-        }
-    });
 
-    // --- CONNECTION STATUS MONITOR ---
-    firebase.database().ref('.info/connected').on('value', function(snap) {
-        let indicator = document.getElementById('sync-indicator');
-        if (snap.val() === true) {
-            indicator.innerText = "🟢 Connected to Cloud";
-            indicator.className = "sync-status";
-        } else {
-            indicator.innerText = "🔴 Offline (Will sync when reconnected)";
-            indicator.className = "sync-status offline";
-        }
-    });
+        // --- REAL-TIME FIREBASE LISTENER (ARCHIVES) ---
+        archivesRef.on('value', (snapshot) => {
+            archivesList = [];
+            snapshot.forEach((child) => {
+                archivesList.push({ dbKey: child.key, ...child.val() });
+            });
+            if (document.getElementById('view-archive').classList.contains('active')) renderArchiveView();
+        });
+
+        // --- CONNECTION STATUS MONITOR ---
+        database.ref('.info/connected').on('value', function(snap) {
+            let indicator = document.getElementById('sync-indicator');
+            if (snap.val() === true) {
+                indicator.innerText = "🟢 Connected to Cloud";
+                indicator.className = "sync-status";
+            } else {
+                indicator.innerText = "🔴 Offline (Will sync when reconnected)";
+                indicator.className = "sync-status offline";
+            }
+        });
+    }
 
     // Initialize UI
     document.getElementById('audio-toggle').checked = audioEnabled;
@@ -232,6 +332,7 @@
         document.getElementById(`nav-${viewName}`).classList.add('active');
         if (viewName === 'list') renderListView();
         if (viewName === 'setup') renderSetupView();
+        if (viewName === 'archive') renderArchiveView();
     }
 
     function setActiveLocation(loc) {
@@ -271,10 +372,12 @@
     function updateInventory() {
         if (currentString.length !== 5) { alert("Please enter a valid 5-digit ULD."); return; }
         
-        // PUSH DATA TO FIREBASE
+        let userName = auth.currentUser ? auth.currentUser.email.split('@')[0] : "Unknown User";
+
         inventoryRef.push({
             uld: currentString,
             location: activeLocation || "Unknown",
+            user: userName,
             timestamp: new Date().toLocaleString()
         });
 
@@ -289,7 +392,6 @@
         if (inventoryList.length === 0) return;
         let lastItem = inventoryList[inventoryList.length - 1];
         if (confirm(`Are you sure you want to undo the last scan: ${lastItem.uld}?`)) {
-            // DELETE FROM FIREBASE
             inventoryRef.child(lastItem.dbKey).remove();
             playVoice("Deleted");
         }
@@ -302,15 +404,100 @@
     }
 
     function startNewInventory() {
-        if (checkAdminAuth()) {
-            if (confirm("DANGER: This will delete the entire master inventory list from the cloud for everyone. Are you sure?")) {
-                // DELETE ALL FIREBASE DATA
-                inventoryRef.remove();
-                currentString = "";
-                renderInput();
-                playVoice("Cloud Inventory Cleared");
-            }
+        if (!checkAdminAuth()) return;
+        
+        let adminName = auth.currentUser.email.split('@')[0];
+
+        if (confirm("DANGER: This will clear the active cloud inventory. Are you sure?")) {
+            
+            inventoryRef.once('value', (snapshot) => {
+                let currentData = snapshot.val();
+                if (currentData) {
+                    archivesRef.push({
+                        timestamp: new Date().toLocaleString(),
+                        user: adminName,
+                        action: "Manual Clear",
+                        data: currentData
+                    }, (error) => {
+                        if (!error) {
+                            inventoryRef.remove();
+                            currentString = "";
+                            renderInput();
+                            playVoice("Inventory Archived and Cleared");
+                            alert("Success! The old inventory was saved to the Archives tab.");
+                        }
+                    });
+                } else {
+                    alert("Inventory is already empty.");
+                }
+            });
         }
+    }
+
+    function renderArchiveView() {
+        let container = document.getElementById('archive-list-container');
+        container.innerHTML = "";
+        
+        if (archivesList.length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#666; font-size:14px;'>No archived versions found.</p>";
+            return;
+        }
+
+        let sortedArchives = [...archivesList].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        sortedArchives.forEach(archive => {
+            let uldCount = archive.data ? Object.keys(archive.data).length : 0;
+            let div = document.createElement('div');
+            div.className = "archive-item";
+            div.innerHTML = `
+                <div class="archive-info">
+                    <strong style="font-size: 14px;">${archive.timestamp}</strong><br>
+                    <span style="color:var(--primary);">By: ${archive.user}</span><br>
+                    Total ULDs: <strong>${uldCount}</strong><br>
+                    <em style="font-size:10px; color:#888;">Note: ${archive.action}</em>
+                </div>
+                <button class="btn-restore" onclick="restoreArchive('${archive.dbKey}')">RESTORE</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function restoreArchive(archiveKey) {
+        if (!checkAdminAuth()) return;
+
+        let archiveToRestore = archivesList.find(a => a.dbKey === archiveKey);
+        if (!archiveToRestore || !archiveToRestore.data) return;
+
+        if (!confirm(`Are you sure you want to restore the inventory from ${archiveToRestore.timestamp}?\n\nIf your CURRENT inventory has data, it will be automatically archived first.`)) return;
+
+        let adminName = auth.currentUser.email.split('@')[0];
+
+        inventoryRef.once('value', (snapshot) => {
+            let currentData = snapshot.val();
+            
+            let doRestore = () => {
+                inventoryRef.set(archiveToRestore.data, (error) => {
+                    if (!error) {
+                        alert("Data successfully restored!");
+                        switchView('list');
+                        playVoice("Data Restored");
+                    }
+                });
+            };
+
+            if (currentData) {
+                archivesRef.push({
+                    timestamp: new Date().toLocaleString(),
+                    user: adminName,
+                    action: "Auto-Archived before Restoration",
+                    data: currentData
+                }, (error) => {
+                    if (!error) doRestore(); 
+                });
+            } else {
+                doRestore();
+            }
+        });
     }
 
     function renderListView() {
@@ -348,7 +535,7 @@
     function checkAdminAuth() {
         let enteredPass = prompt("Enter Admin Password:");
         if (enteredPass === ADMIN_PASSWORD) return true;
-        alert("Incorrect Password. Action Denied.");
+        if (enteredPass !== null) alert("Incorrect Password. Action Denied.");
         return false;
     }
 
@@ -377,10 +564,11 @@
 
     function exportToCSV() {
         if (inventoryList.length === 0) { alert("No data to export."); return; }
-        let csvContent = "\uFEFFULD_Number,Location,Timestamp\n";
+        let csvContent = "\uFEFFULD_Number,Location,User,Timestamp\n";
         inventoryList.forEach(item => { 
             let safeLocation = `"${item.location}"`;
-            csvContent += `${item.uld},${safeLocation},${item.timestamp}\n`; 
+            let user = item.user || "Unknown";
+            csvContent += `${item.uld},${safeLocation},${user},${item.timestamp}\n`; 
         });
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
