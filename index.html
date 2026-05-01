@@ -13,15 +13,6 @@
         :root { --bg-color: #f4f4f9; --btn-bg: #ffffff; --btn-active: #e0e0e0; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --info: #17a2b8; --dark: #343a40; --text-main: #333; }
         body { font-family: Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; display: flex; justify-content: center; touch-action: manipulation; }
         #app-container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
-        
-        /* LOGIN SCREEN STYLES */
-        #login-section { display: flex; flex-direction: column; justify-content: center; height: 80vh; }
-        .login-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box;}
-        .login-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background-color: var(--primary); color: white; border: none; border-radius: 5px; margin-bottom: 10px;}
-        #login-error { color: var(--danger); font-size: 13px; text-align: center; min-height: 20px; font-weight: bold;}
-        
-        #main-app-content { display: none; flex-direction: column; flex-grow: 1; }
-        
         .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;}
         .nav-bar button { flex: 1; padding: 10px 2px; font-size: 11px; font-weight: bold; background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; color: var(--dark); min-width: 70px;}
         .nav-bar button.active { background: var(--dark); color: white; border-color: var(--dark); }
@@ -62,132 +53,120 @@
         .toggle-row input[type="checkbox"] { transform: scale(1.5); }
         .sync-status { text-align: center; font-size: 11px; color: var(--success); font-weight: bold; margin-top: 5px; }
         .sync-status.offline { color: var(--danger); }
+        
+        /* Archive specific styles */
         .archive-item { border: 1px solid #ccc; padding: 12px; margin-bottom: 10px; border-radius: 6px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
         .archive-info { font-size: 12px; color: #444; line-height: 1.4;}
         .btn-restore { background: var(--info); color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 12px; cursor: pointer; }
-        .logout-btn { width: 100%; padding: 12px; margin-top: 15px; font-size: 16px; background-color: var(--dark); color: white; border: none; border-radius: 5px; font-weight: bold;}
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    
-    <!-- LOGIN SECTION -->
-    <div id="login-section">
-        <h2 style="text-align: center; color: var(--dark); margin-bottom: 30px;">ULD Inventory<br><span style="font-size: 14px; color: #666;">Authorized Access Only</span></h2>
-        <input type="email" id="auth-email" class="login-input" placeholder="Email Address">
-        <input type="password" id="auth-password" class="login-input" placeholder="Password">
-        <button class="login-btn" onclick="loginUser()">LOGIN</button>
-        <div id="login-error"></div>
+    <div class="nav-bar">
+        <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
+        <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
+        <button id="nav-archive" onclick="switchView('archive')">ARCHIVES</button>
+        <button id="nav-setup" onclick="switchView('setup')">SETUP</button>
     </div>
 
-    <!-- MAIN APP CONTENT (Hidden until logged in) -->
-    <div id="main-app-content">
-        <div class="nav-bar">
-            <button id="nav-scan" class="active" onclick="switchView('scan')">SCANNER</button>
-            <button id="nav-list" onclick="switchView('list')">VIEW LIST</button>
-            <button id="nav-archive" onclick="switchView('archive')">ARCHIVES</button>
-            <button id="nav-setup" onclick="switchView('setup')">SETUP</button>
+    <!-- SCANNER -->
+    <div id="view-scan" class="view-section active">
+        <div class="header-btns">
+            <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
         </div>
 
-        <!-- SCANNER -->
-        <div id="view-scan" class="view-section active">
-            <div class="header-btns">
-                <button id="btn-new" onclick="startNewInventory()">CLEAR CLOUD DATA</button>
-            </div>
-
-            <div class="location-group">
-                <label>Current Location:</label>
-                <div class="location-buttons" id="location-button-container"></div>
-            </div>
-
-            <div class="status-bar">
-                <span id="mode-display">Sync: LIVE</span>
-                <span>Count: <span id="count-display">0</span></span>
-            </div>
-
-            <div class="recent-scans-row">
-                <div class="recent-scans" id="recent-display">Last: None</div>
-                <button class="btn-undo" onclick="undoLastScan()">UNDO LAST</button>
-            </div>
-
-            <div class="input-display" id="current-input">_ _ _ _ _</div>
-
-            <div class="keypad">
-                <button onclick="pressKey('1')">1</button>
-                <button onclick="pressKey('2')">2</button>
-                <button onclick="pressKey('3')">3</button>
-                <button onclick="pressKey('4')">4</button>
-                <button onclick="pressKey('5')">5</button>
-                <button onclick="pressKey('6')">6</button>
-                <button onclick="pressKey('7')">7</button>
-                <button onclick="pressKey('8')">8</button>
-                <button onclick="pressKey('9')">9</button>
-                <button onclick="clearInput()" style="color: #dc3545; font-size: 16px;">CLEAR</button>
-                <button onclick="pressKey('0')">0</button>
-                <button onclick="backspace()" style="color: #d39e00; font-size: 16px;">BKSP</button>
-            </div>
-            <button id="btn-update" onclick="updateInventory()">UPDATE</button>
-            
-            <div id="sync-indicator" class="sync-status">🟢 Connecting to Database...</div>
+        <div class="location-group">
+            <label>Current Location:</label>
+            <div class="location-buttons" id="location-button-container"></div>
         </div>
 
-        <!-- VIEW LIST -->
-        <div id="view-list" class="view-section">
-            <div class="status-bar" style="margin-bottom: 15px;">
-                <span>Live Cloud Data</span>
-                <span>Total: <span id="list-total">0</span></span>
-            </div>
-            <div class="list-container">
-                <table>
-                    <thead>
-                        <tr><th>ULD</th><th>Location</th><th style="width: 40px; text-align: center;">Action</th></tr>
-                    </thead>
-                    <tbody id="inventory-table-body"></tbody>
-                </table>
-            </div>
-            <button class="export-btn" onclick="exportToCSV()">Export Data to CSV</button>
+        <div class="status-bar">
+            <span id="mode-display">Sync: LIVE</span>
+            <span>Count: <span id="count-display">0</span></span>
         </div>
 
-        <!-- ARCHIVES -->
-        <div id="view-archive" class="view-section">
-            <h3 style="margin-top:0; color:var(--dark);">Deleted Versions</h3>
-            <p style="font-size:12px; color:#666; margin-top:-10px;">Restoring a version will safely backup your current active list here first.</p>
-            <div class="list-container" id="archive-list-container" style="padding: 10px; background: #fff;">
-            </div>
+        <div class="recent-scans-row">
+            <div class="recent-scans" id="recent-display">Last: None</div>
+            <button class="btn-undo" onclick="undoLastScan()">UNDO LAST</button>
         </div>
 
-        <!-- SETUP -->
-        <div id="view-setup" class="view-section">
-            <div class="setup-section">
-                <h3>App Preferences</h3>
-                <div class="toggle-row">
-                    <label for="audio-toggle">Read Numbers Out Loud</label>
-                    <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
-                </div>
-                <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
-            </div>
+        <div class="input-display" id="current-input">_ _ _ _ _</div>
 
-            <div class="setup-section" style="border:none;">
-                <h3>Master Locations</h3>
-                <div class="setup-input-group">
-                    <input type="text" id="new-loc-input" placeholder="e.g. Ramp 3, WH-North">
-                    <button onclick="addLocation()">ADD</button>
-                </div>
-                <div id="locations-list-container"></div>
+        <div class="keypad">
+            <button onclick="pressKey('1')">1</button>
+            <button onclick="pressKey('2')">2</button>
+            <button onclick="pressKey('3')">3</button>
+            <button onclick="pressKey('4')">4</button>
+            <button onclick="pressKey('5')">5</button>
+            <button onclick="pressKey('6')">6</button>
+            <button onclick="pressKey('7')">7</button>
+            <button onclick="pressKey('8')">8</button>
+            <button onclick="pressKey('9')">9</button>
+            <button onclick="clearInput()" style="color: #dc3545; font-size: 16px;">CLEAR</button>
+            <button onclick="pressKey('0')">0</button>
+            <button onclick="backspace()" style="color: #d39e00; font-size: 16px;">BKSP</button>
+        </div>
+        <button id="btn-update" onclick="updateInventory()">UPDATE</button>
+        
+        <div id="sync-indicator" class="sync-status">🟢 Connecting to Database...</div>
+    </div>
+
+    <!-- VIEW LIST -->
+    <div id="view-list" class="view-section">
+        <div class="status-bar" style="margin-bottom: 15px;">
+            <span>Live Cloud Data</span>
+            <span>Total: <span id="list-total">0</span></span>
+        </div>
+        <div class="list-container">
+            <table>
+                <thead>
+                    <tr><th>ULD</th><th>Location</th><th style="width: 40px; text-align: center;">Action</th></tr>
+                </thead>
+                <tbody id="inventory-table-body"></tbody>
+            </table>
+        </div>
+        <button class="export-btn" onclick="exportToCSV()">Export Data to CSV</button>
+    </div>
+
+    <!-- ARCHIVES -->
+    <div id="view-archive" class="view-section">
+        <h3 style="margin-top:0; color:var(--dark);">Deleted Versions</h3>
+        <p style="font-size:12px; color:#666; margin-top:-10px;">Restoring a version will safely backup your current active list here first.</p>
+        <div class="list-container" id="archive-list-container" style="padding: 10px; background: #fff;">
+            <!-- Archives populate here -->
+        </div>
+    </div>
+
+    <!-- SETUP -->
+    <div id="view-setup" class="view-section">
+        <div class="setup-section">
+            <h3>App Preferences</h3>
+            <div class="toggle-row">
+                <label for="audio-toggle">Read Numbers Out Loud</label>
+                <input type="checkbox" id="audio-toggle" onchange="toggleAudio()">
             </div>
-            
-            <div style="margin-top: 30px; text-align: center;">
-                <p style="font-size: 12px; color: #666; margin-bottom: 5px;">Logged in as: <span id="current-user-email"></span></p>
-                <button class="logout-btn" onclick="logoutUser()">LOGOUT APP</button>
+            <p style="font-size: 11px; color: #666; margin-top: 5px;">Requires device volume to be turned up.</p>
+        </div>
+
+        <div class="setup-section" style="border:none;">
+            <h3>Master Locations</h3>
+            <div class="setup-input-group">
+                <input type="text" id="new-loc-input" placeholder="e.g. Ramp 3, WH-North">
+                <button onclick="addLocation()">ADD</button>
             </div>
+            <div id="locations-list-container"></div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 15px;">
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Scanner Assigned To:<br><strong id="current-user-display" style="font-size: 16px; color: var(--primary);">Loading...</strong></p>
+            <button class="export-btn" style="background-color: var(--dark); padding: 10px; font-size: 14px;" onclick="changeUser()">CHANGE USER</button>
         </div>
     </div>
 </div>
 
-<!-- FIREBASE SCRIPTS (ADDED AUTH SDK) -->
+<!-- FIREBASE SCRIPTS -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
@@ -207,60 +186,9 @@
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const database = firebase.database();
-    
-    // We declare these, but don't connect them until AFTER login
-    let inventoryRef;
-    let archivesRef;
-
-    // ==========================================
-    // AUTHENTICATION LOGIC
-    // ==========================================
-    
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            // User is signed in.
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('main-app-content').style.display = 'flex';
-            document.getElementById('current-user-email').innerText = user.email;
-            
-            // Connect to database ONLY after verified login
-            inventoryRef = database.ref('scans');
-            archivesRef = database.ref('archives');
-            setupDatabaseListeners();
-            
-        } else {
-            // No user is signed in.
-            document.getElementById('login-section').style.display = 'flex';
-            document.getElementById('main-app-content').style.display = 'none';
-        }
-    });
-
-    function loginUser() {
-        const email = document.getElementById('auth-email').value;
-        const pass = document.getElementById('auth-password').value;
-        const errorDiv = document.getElementById('login-error');
-        
-        if(!email || !pass) { errorDiv.innerText = "Please enter email and password"; return; }
-        
-        errorDiv.innerText = "Logging in...";
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch((error) => {
-                errorDiv.innerText = error.message;
-            });
-    }
-
-    function logoutUser() {
-        auth.signOut().then(() => {
-            // clear data from screen
-            inventoryList = [];
-            archivesList = [];
-            document.getElementById('auth-password').value = "";
-            document.getElementById('login-error').innerText = "";
-            alert("Successfully logged out.");
-        });
-    }
+    const inventoryRef = database.ref('scans');
+    const archivesRef = database.ref('archives'); 
 
     // ==========================================
     // APP CONFIGURATION & STATE
@@ -273,39 +201,60 @@
     let masterLocations = JSON.parse(localStorage.getItem('uld_locations')) || ["WH-1", "WH-2", "Ramp A"];
     let audioEnabled = JSON.parse(localStorage.getItem('uld_audio_enabled')) || false;
     let activeLocation = localStorage.getItem('uld_active_location') || masterLocations[0];
-
-    function setupDatabaseListeners() {
-        // --- REAL-TIME FIREBASE LISTENER (ACTIVE INVENTORY) ---
-        inventoryRef.on('value', (snapshot) => {
-            inventoryList = [];
-            snapshot.forEach((childSnapshot) => {
-                inventoryList.push({ dbKey: childSnapshot.key, ...childSnapshot.val() });
-            });
-            updateScanUI();
-            if (document.getElementById('view-list').classList.contains('active')) renderListView();
-        });
-
-        // --- REAL-TIME FIREBASE LISTENER (ARCHIVES) ---
-        archivesRef.on('value', (snapshot) => {
-            archivesList = [];
-            snapshot.forEach((child) => {
-                archivesList.push({ dbKey: child.key, ...child.val() });
-            });
-            if (document.getElementById('view-archive').classList.contains('active')) renderArchiveView();
-        });
-
-        // --- CONNECTION STATUS MONITOR ---
-        database.ref('.info/connected').on('value', function(snap) {
-            let indicator = document.getElementById('sync-indicator');
-            if (snap.val() === true) {
-                indicator.innerText = "🟢 Connected to Cloud";
-                indicator.className = "sync-status";
-            } else {
-                indicator.innerText = "🔴 Offline (Will sync when reconnected)";
-                indicator.className = "sync-status offline";
-            }
-        });
+    
+    // --- USER IDENTIFICATION SYSTEM ---
+    let currentUserName = localStorage.getItem('uld_username');
+    if (!currentUserName) {
+        currentUserName = prompt("Welcome to ULD Inventory!\n\nPlease enter your Name or Staff ID:") || "Unknown Worker";
+        localStorage.setItem('uld_username', currentUserName);
     }
+    
+    // Set UI on load
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('current-user-display').innerText = currentUserName;
+    });
+
+    function changeUser() {
+        let newName = prompt("Enter new Name or Staff ID:", currentUserName);
+        if (newName && newName.trim() !== "") {
+            currentUserName = newName.trim();
+            localStorage.setItem('uld_username', currentUserName);
+            document.getElementById('current-user-display').innerText = currentUserName;
+            alert(`Scanner is now assigned to: ${currentUserName}`);
+        }
+    }
+
+    // --- REAL-TIME FIREBASE LISTENER (ACTIVE INVENTORY) ---
+    inventoryRef.on('value', (snapshot) => {
+        inventoryList = [];
+        snapshot.forEach((childSnapshot) => {
+            inventoryList.push({ dbKey: childSnapshot.key, ...childSnapshot.val() });
+        });
+        
+        updateScanUI();
+        if (document.getElementById('view-list').classList.contains('active')) renderListView();
+    });
+
+    // --- REAL-TIME FIREBASE LISTENER (ARCHIVES) ---
+    archivesRef.on('value', (snapshot) => {
+        archivesList = [];
+        snapshot.forEach((child) => {
+            archivesList.push({ dbKey: child.key, ...child.val() });
+        });
+        if (document.getElementById('view-archive').classList.contains('active')) renderArchiveView();
+    });
+
+    // --- CONNECTION STATUS MONITOR ---
+    firebase.database().ref('.info/connected').on('value', function(snap) {
+        let indicator = document.getElementById('sync-indicator');
+        if (snap.val() === true) {
+            indicator.innerText = "🟢 Connected to Cloud";
+            indicator.className = "sync-status";
+        } else {
+            indicator.innerText = "🔴 Offline (Will sync when reconnected)";
+            indicator.className = "sync-status offline";
+        }
+    });
 
     // Initialize UI
     document.getElementById('audio-toggle').checked = audioEnabled;
@@ -372,12 +321,10 @@
     function updateInventory() {
         if (currentString.length !== 5) { alert("Please enter a valid 5-digit ULD."); return; }
         
-        let userName = auth.currentUser ? auth.currentUser.email.split('@')[0] : "Unknown User";
-
         inventoryRef.push({
             uld: currentString,
             location: activeLocation || "Unknown",
-            user: userName,
+            user: currentUserName, // Uses local name
             timestamp: new Date().toLocaleString()
         });
 
@@ -403,19 +350,22 @@
         document.getElementById('recent-display').innerText = recent.length > 0 ? "Last: " + recent.join(', ') : "Last: None";
     }
 
+    // ==========================================
+    // VERSION CONTROL & BACKUP LOGIC
+    // ==========================================
+
     function startNewInventory() {
         if (!checkAdminAuth()) return;
-        
-        let adminName = auth.currentUser.email.split('@')[0];
 
         if (confirm("DANGER: This will clear the active cloud inventory. Are you sure?")) {
             
             inventoryRef.once('value', (snapshot) => {
                 let currentData = snapshot.val();
+                
                 if (currentData) {
                     archivesRef.push({
                         timestamp: new Date().toLocaleString(),
-                        user: adminName,
+                        user: currentUserName, // Uses local name
                         action: "Manual Clear",
                         data: currentData
                     }, (error) => {
@@ -468,9 +418,7 @@
         let archiveToRestore = archivesList.find(a => a.dbKey === archiveKey);
         if (!archiveToRestore || !archiveToRestore.data) return;
 
-        if (!confirm(`Are you sure you want to restore the inventory from ${archiveToRestore.timestamp}?\n\nIf your CURRENT inventory has data, it will be automatically archived first.`)) return;
-
-        let adminName = auth.currentUser.email.split('@')[0];
+        if (!confirm(`Are you sure you want to restore the inventory from ${archiveToRestore.timestamp}?\n\nIf your CURRENT inventory has data, it will be automatically archived first to prevent loss.`)) return;
 
         inventoryRef.once('value', (snapshot) => {
             let currentData = snapshot.val();
@@ -488,7 +436,7 @@
             if (currentData) {
                 archivesRef.push({
                     timestamp: new Date().toLocaleString(),
-                    user: adminName,
+                    user: currentUserName, // Uses local name
                     action: "Auto-Archived before Restoration",
                     data: currentData
                 }, (error) => {
@@ -499,6 +447,8 @@
             }
         });
     }
+
+    // ==========================================
 
     function renderListView() {
         let tbody = document.getElementById('inventory-table-body');
